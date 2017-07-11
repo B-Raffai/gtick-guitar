@@ -87,6 +87,7 @@ typedef struct metro_t {
   struct timeval lasttap;              /* Last activation of Tap button */
 
   GtkObject* speed_adjustment;
+  GtkObject* speed_increment; /* added to / substraced from speed */
   GtkObject* volume_adjustment;
   int volume_initialized; /* do we have an initial volume from server yet? */
 

@@ -66,6 +66,7 @@ static void preferences_cb(GtkAction *action, metro_t *metro);
 static void quit_cb(GtkAction *action, metro_t *metro);
 static void toggle_accenttable_cb(GtkToggleAction *action, metro_t *metro);
 static void toggle_visualtick_cb(GtkToggleAction *action, metro_t *metro);
+void change_speed(metro_t* metro);
 
 #define TIMER_DELAY 300
 volatile int interrupted = 0; /* the caught signal will be stored here */
@@ -1467,6 +1468,9 @@ metro_t* metro_new(void) {
   GtkWidget* accenttable;
   GtkWidget* button;
   GtkWidget* alignment;
+
+  GtkWidget* testbutton;
+
   closure_data_t* closure_data;
   guint i, j;
 
@@ -1584,6 +1588,12 @@ metro_t* metro_new(void) {
   gtk_container_set_border_width(GTK_CONTAINER(metrovbox), 0);
   gtk_container_add(GTK_CONTAINER(alignment), metrovbox);
   gtk_widget_show(metrovbox);
+  
+  /*TODO
+   * make method for adjusting tempo
+   * split table in two
+   * add buttons for increase/decrease tempo
+   * add number selector for step size */
 
   table = gtk_table_new(3, 3, FALSE);
   gtk_box_pack_start(GTK_BOX(metrovbox), table, FALSE, TRUE, 0);
@@ -1902,6 +1912,13 @@ metro_t* metro_new(void) {
 		    metro->togglebutton_label);
   gtk_widget_show(metro->togglebutton_label);
 
+  testbutton = gtk_button_new_with_label("test");
+  g_signal_connect_swapped(testbutton, "clicked", G_CALLBACK(change_speed),
+          metro);
+  gtk_box_pack_start(windowvbox, testbutton, 0, 0, 0);
+  gtk_widget_show(testbutton);
+  
+
   /* set up additional short cuts */
   for (i = '1'; i <= '9'; i++) {
     closure_data = (closure_data_t*) g_malloc (sizeof(closure_data_t));
@@ -2003,3 +2020,10 @@ void metro_delete(metro_t* metro) {
   g_free(metro);
 }
 
+void change_speed(metro_t* metro) {
+  gdouble speed;
+
+  speed = gtk_adjustment_get_value(GTK_ADJUSTMENT(metro->speed_adjustment));
+  g_print("speed:%f inceasing by %d\n", speed, 5);
+  gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment), speed + 5);
+}
