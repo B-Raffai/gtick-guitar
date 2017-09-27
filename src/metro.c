@@ -66,7 +66,8 @@ static void preferences_cb(GtkAction *action, metro_t *metro);
 static void quit_cb(GtkAction *action, metro_t *metro);
 static void toggle_accenttable_cb(GtkToggleAction *action, metro_t *metro);
 static void toggle_visualtick_cb(GtkToggleAction *action, metro_t *metro);
-void change_speed(metro_t* metro);
+void inc_speed_cb(metro_t* metro);
+void dec_speed_cb(metro_t* metro);
 
 #define TIMER_DELAY 300
 volatile int interrupted = 0; /* the caught signal will be stored here */
@@ -168,7 +169,7 @@ static guint get_name_index_from_speed(int speed) {
 
   while (result < sizeof(speed_names) / sizeof(speed_name_t) &&
          (speed_names[result].min_bpm > speed ||
-	  speed_names[result].max_bpm <= speed)) {
+          speed_names[result].max_bpm <= speed)) {
 
     result ++;
   }
@@ -229,17 +230,17 @@ int gui_get_meter(metro_t* metro) {
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(metro->meter_button_1)))
     meter = 1;
   else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-	  metro->meter_button_2)))
+          metro->meter_button_2)))
     meter = 2;
   else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-	  metro->meter_button_3)))
+          metro->meter_button_3)))
     meter = 3;
   else if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-	  metro->meter_button_4)))
+          metro->meter_button_4)))
     meter = 4;
   else
     meter = gtk_spin_button_get_value_as_int(
-	GTK_SPIN_BUTTON(metro->meter_spin_button));
+        GTK_SPIN_BUTTON(metro->meter_spin_button));
 
   return meter;
 }
@@ -281,7 +282,7 @@ static void set_speed_cb(metro_t *metro)
 
   comm_client_query(metro->inter_thread_comm,
                     MESSAGE_TYPE_SET_FREQUENCY,
-		    frequency);
+                    frequency);
 }
 
 /*
@@ -309,7 +310,7 @@ static void accents_changed_cb(metro_t* metro) {
 
   for (i = 0; i < MAX_METER; i++) {
     message[i] = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-	                                          metro->accentbuttons[i]));
+                                                  metro->accentbuttons[i]));
   }
 
   comm_client_query(metro->inter_thread_comm, MESSAGE_TYPE_SET_ACCENTS,
@@ -325,11 +326,11 @@ static void set_state(metro_t* metro, int state) {
 
     if (metro->state == STATE_RUNNING && state == STATE_IDLE) {
       comm_client_query(metro->inter_thread_comm,
-	                MESSAGE_TYPE_STOP_METRONOME, NULL);
+                        MESSAGE_TYPE_STOP_METRONOME, NULL);
       execute(metro->options->command_on_stop);
     } else if (metro->state == STATE_IDLE && state == STATE_RUNNING) {
       comm_client_query(metro->inter_thread_comm,
-	                MESSAGE_TYPE_START_METRONOME, NULL);
+                        MESSAGE_TYPE_START_METRONOME, NULL);
       execute(metro->options->command_on_start);
       visualtick_sync(metro, 0);
     } else {
@@ -337,12 +338,12 @@ static void set_state(metro_t* metro, int state) {
     }
 
     gtk_statusbar_pop(GTK_STATUSBAR(metro->statusbar),
-		      metro->status_context);
+                      metro->status_context);
     gtk_statusbar_push(GTK_STATUSBAR(metro->statusbar),
-		       metro->status_context,
-		       _(state_data[state].state));
+                       metro->status_context,
+                       _(state_data[state].state));
     gtk_label_set_text(GTK_LABEL(metro->togglebutton_label),
-		       _(state_data[state].toggle_label));
+                       _(state_data[state].toggle_label));
     /* Set Start/Stop label */
     g_object_set(metro->start_action, "label",
                  _(state_data[state].toggle_label), NULL);
@@ -359,18 +360,18 @@ static gint handle_comm(metro_t* metro) {
   void* body = NULL;
 
   while ((message_type = comm_client_try_get_reply(metro->inter_thread_comm,
-	                                           &body)) !=
+                                                   &body)) !=
          MESSAGE_TYPE_NO_MESSAGE)
   {
     switch (message_type) {
       case MESSAGE_TYPE_RESPONSE_SYNC:
-	visualtick_sync(metro, *((unsigned int*) body));
-	free(body);
-	break;
+        visualtick_sync(metro, *((unsigned int*) body));
+        free(body);
+        break;
       case MESSAGE_TYPE_RESPONSE_START_ERROR:
-	gtk_widget_show(metro->start_error);
+        gtk_widget_show(metro->start_error);
 
-	set_state(metro, STATE_IDLE);
+        set_state(metro, STATE_IDLE);
         break;
       default:
         printf("Warning: Unhandled message type: %d.\n", message_type);
@@ -437,11 +438,11 @@ static gint timeout_callback(metro_t* metro) {
     switch(interrupted) {
     case SIGINT:
       if (debug)
-	fprintf(stderr, "SIGINT (Ctrl-C ?) caught.\n");
+        fprintf(stderr, "SIGINT (Ctrl-C ?) caught.\n");
       break;
     case SIGTERM:
       if (debug)
-	fprintf(stderr, "SIGTERM caught.\n");
+        fprintf(stderr, "SIGTERM caught.\n");
       break;
     default:
       fprintf(stderr, "Warning: Unknown signal caught.\n");
@@ -496,15 +497,15 @@ static int set_sample(metro_t* metro,
     free(metro->options->sample_name);
   else
     fprintf(stderr,
-	    "free() error: metro->options->sample_name not allocated.\n");
+            "free() error: metro->options->sample_name not allocated.\n");
   metro->options->sample_name = strdup(sample_name);
   comm_client_query(metro->inter_thread_comm,
                     MESSAGE_TYPE_SET_SOUND, strdup(sample_name));
   if (metro->state == STATE_RUNNING) {
     comm_client_query(metro->inter_thread_comm,
-	              MESSAGE_TYPE_STOP_METRONOME, NULL);
+                      MESSAGE_TYPE_STOP_METRONOME, NULL);
     comm_client_query(metro->inter_thread_comm,
-	              MESSAGE_TYPE_START_METRONOME, NULL);
+                      MESSAGE_TYPE_START_METRONOME, NULL);
   }
 
   return 0;
@@ -527,7 +528,7 @@ static int new_sound_device_name(metro_t* metro) {
   metro->options->sound_device_name = strdup(DEFAULT_SOUND_DEVICE_FILENAME);
   comm_client_query(metro->inter_thread_comm,
                     MESSAGE_TYPE_SET_DEVICE,
-		    strdup(DEFAULT_SOUND_DEVICE_FILENAME));
+                    strdup(DEFAULT_SOUND_DEVICE_FILENAME));
   if (metro->options->sound_device_name)
     return 0;
   else
@@ -549,21 +550,21 @@ static void delete_sound_device_name(metro_t* metro) {
  */
 static int set_sound_device_name(metro_t* metro,
                                  const char* option_name _U_,
-				 const char* sound_device_name)
+                                 const char* sound_device_name)
 {
   if (metro->options->sound_device_name)
     free(metro->options->sound_device_name);
   else
     fprintf(stderr,
-	    "free() error: metro->options->sound_device_name not allocated.\n");
+            "free() error: metro->options->sound_device_name not allocated.\n");
   metro->options->sound_device_name = strdup(sound_device_name);
   comm_client_query(metro->inter_thread_comm,
                     MESSAGE_TYPE_SET_DEVICE, strdup(sound_device_name));
   if (metro->state == STATE_RUNNING) {
     comm_client_query(metro->inter_thread_comm,
-	              MESSAGE_TYPE_STOP_METRONOME, NULL);
+                      MESSAGE_TYPE_STOP_METRONOME, NULL);
     comm_client_query(metro->inter_thread_comm,
-	              MESSAGE_TYPE_START_METRONOME, NULL);
+                      MESSAGE_TYPE_START_METRONOME, NULL);
   }
 
   return 0;
@@ -579,7 +580,7 @@ static int new_sound_system(metro_t* metro) {
   metro->options->sound_device_name = strdup(DEFAULT_SOUND_SYSTEM);
   comm_client_query(metro->inter_thread_comm,
                     MESSAGE_TYPE_SET_SOUNDSYSTEM,
-		    strdup(DEFAULT_SOUND_SYSTEM));
+                    strdup(DEFAULT_SOUND_SYSTEM));
   if (metro->options->soundsystem)
     return 0;
   else
@@ -601,21 +602,21 @@ static void delete_sound_system(metro_t* metro) {
  */
 static int set_sound_system(metro_t* metro,
                                  const char* option_name _U_,
-				 const char* sound_system)
+                                 const char* sound_system)
 {
   if (metro->options->soundsystem)
     free(metro->options->soundsystem);
   else
     fprintf(stderr,
-	    "free() error: metro->options->sound_device_name not allocated.\n");
+            "free() error: metro->options->sound_device_name not allocated.\n");
   metro->options->soundsystem = strdup(sound_system);
   comm_client_query(metro->inter_thread_comm,
                     MESSAGE_TYPE_SET_SOUNDSYSTEM, strdup(sound_system));
   if (metro->state == STATE_RUNNING) {
     comm_client_query(metro->inter_thread_comm,
-	              MESSAGE_TYPE_STOP_METRONOME, NULL);
+                      MESSAGE_TYPE_STOP_METRONOME, NULL);
     comm_client_query(metro->inter_thread_comm,
-	              MESSAGE_TYPE_START_METRONOME, NULL);
+                      MESSAGE_TYPE_START_METRONOME, NULL);
   }
 
   return 0;
@@ -646,7 +647,7 @@ static const char* get_sound_device_name(metro_t* metro,
  */
 static int set_min_bpm(metro_t* metro,
                        const char* option_name _U_,
-		       const char* min_bpm)
+                       const char* min_bpm)
 {
   gint new_min_bpm;
 
@@ -706,7 +707,7 @@ static void delete_min_bpm(metro_t* metro _U_) {
  */
 static int set_max_bpm(metro_t* metro,
                        const char* option_name _U_,
-		       const char* max_bpm)
+                       const char* max_bpm)
 {
   gint new_max_bpm;
 
@@ -873,25 +874,25 @@ static void set_meter_int(metro_t* metro, int meter)
   switch (meter) {
     case 1:
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(metro->meter_button_1),
-	  TRUE);
+          TRUE);
       break;
     case 2:
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(metro->meter_button_2),
-	  TRUE);
+          TRUE);
       break;
     case 3:
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(metro->meter_button_3),
-	  TRUE);
+          TRUE);
       break;
     case 4:
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(metro->meter_button_4),
-	  TRUE);
+          TRUE);
       break;
     default:
       gtk_toggle_button_set_active(
-	  GTK_TOGGLE_BUTTON(metro->meter_button_more), TRUE);
+          GTK_TOGGLE_BUTTON(metro->meter_button_more), TRUE);
       gtk_spin_button_set_value(GTK_SPIN_BUTTON(metro->meter_spin_button),
-				meter);
+                                meter);
   }
   gtk_widget_set_sensitive(metro->meter_spin_button, meter > 4);
 
@@ -1008,7 +1009,7 @@ static void delete_command_on_start(options_t* options) {
 /* option system callback for setting command for metronome start */
 static int set_command_on_start(options_t* options,
                                 const char* option_name _U_,
-				const char* command)
+                                const char* command)
 {
   if (options->command_on_start)
     free(options->command_on_start);
@@ -1042,7 +1043,7 @@ static void delete_command_on_stop(options_t* options) {
 /* option system callback for setting command for metronome stop */
 static int set_command_on_stop(options_t* options,
                                const char* option_name _U_,
-			       const char* command)
+                               const char* command)
 {
   if (options->command_on_stop)
     free(options->command_on_stop);
@@ -1119,7 +1120,7 @@ static void delete_show_accenttable(metro_t* metro _U_) {
 /* option system callback for setting accenttable option */
 static int set_show_accenttable(metro_t* metro,
                                 const char* option_name _U_,
-				const char* accenttable)
+                                const char* accenttable)
 {
   if (metro) {
     gtk_toggle_action_set_active(metro->accenttable_action,
@@ -1151,7 +1152,7 @@ static int new_accents(metro_t* metro) {
                                  TRUE);
     for (i = 1; i < MAX_METER; i++) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(metro->accentbuttons[i]),
-	                           FALSE);
+                                   FALSE);
     }
     return 0;
   } else {
@@ -1172,13 +1173,13 @@ int set_accents(metro_t* metro,
 
     while (*accents && i < MAX_METER) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(metro->accentbuttons[i]),
-	                           *accents == '1');
+                                   *accents == '1');
       i++;
       accents++;
     }
     while (i < MAX_METER) {
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(metro->accentbuttons[i]),
-	                           FALSE);
+                                   FALSE);
       i++;
     }
     return 0;
@@ -1199,8 +1200,8 @@ const char* get_accents(metro_t* metro,
     for (i = 0; i < MAX_METER; i++) {
       result[i] =
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-	                                 metro->accentbuttons[i])) ?
-	'1' : '0';
+                                         metro->accentbuttons[i])) ?
+        '1' : '0';
     }
 
     result[MAX_METER] = '\0';
@@ -1303,7 +1304,7 @@ static void set_speed_shortcut_cb_plus(metro_t* metro) {
 
   if (speed + 1 <= GTK_ADJUSTMENT(metro->speed_adjustment)->upper) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed + 1);
+                             speed + 1);
   }
 }
 static void set_speed_shortcut_cb_plusTwo(metro_t* metro) {
@@ -1312,7 +1313,7 @@ static void set_speed_shortcut_cb_plusTwo(metro_t* metro) {
 
   if (speed + 2 <= GTK_ADJUSTMENT(metro->speed_adjustment)->upper) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed + 2);
+                             speed + 2);
   }
 }
 
@@ -1322,7 +1323,7 @@ static void set_speed_shortcut_cb_plusTen(metro_t* metro) {
 
   if (speed + 10 <= GTK_ADJUSTMENT(metro->speed_adjustment)->upper) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed + 10);
+                             speed + 10);
   }
 }
 
@@ -1332,7 +1333,7 @@ static void set_speed_shortcut_cb_minus(metro_t* metro) {
 
   if (speed - 1 >= GTK_ADJUSTMENT(metro->speed_adjustment)->lower) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed - 1);
+                             speed - 1);
   }
 }
 
@@ -1342,7 +1343,7 @@ static void set_speed_shortcut_cb_minusTwo(metro_t* metro) {
 
   if (speed - 2 >= GTK_ADJUSTMENT(metro->speed_adjustment)->lower) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed - 2);
+                             speed - 2);
   }
 }
 
@@ -1352,7 +1353,7 @@ static void set_speed_shortcut_cb_minusTen(metro_t* metro) {
 
   if (speed - 10 >= GTK_ADJUSTMENT(metro->speed_adjustment)->lower) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed - 10);
+                             speed - 10);
   }
 }
 
@@ -1362,7 +1363,7 @@ static void set_speed_shortcut_cb_double(metro_t* metro) {
 
   if (speed * 2 <= GTK_ADJUSTMENT(metro->speed_adjustment)->upper) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed *= 2);
+                             speed *= 2);
   }
 }
 
@@ -1373,7 +1374,7 @@ static void set_speed_shortcut_cb_half(metro_t* metro) {
 
   if (round(speed / 2) >= GTK_ADJUSTMENT(metro->speed_adjustment)->lower) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
-	                     speed = round(speed / 2));
+                             speed = round(speed / 2));
   }
 }
 
@@ -1385,7 +1386,7 @@ static void set_volume_shortcut_cb_plusTwo(metro_t* metro) {
 
   if (volume + 2 <= 100) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->volume_adjustment),
-	                     volume + 2);
+                             volume + 2);
   }
 }
 
@@ -1395,7 +1396,7 @@ static void set_volume_shortcut_cb_minusTwo(metro_t* metro) {
 
   if (volume - 2 >= 0) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->volume_adjustment),
-	                     volume - 2);
+                             volume - 2);
   }
 }
 
@@ -1405,7 +1406,7 @@ static void set_volume_shortcut_cb_plusTen(metro_t* metro) {
 
   if (volume + 10 <= 100) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->volume_adjustment),
-	                     volume + 10);
+                             volume + 10);
   }
 }
 
@@ -1415,7 +1416,7 @@ static void set_volume_shortcut_cb_minusTen(metro_t* metro) {
 
   if (volume - 10 >= 0) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->volume_adjustment),
-	                     volume - 10);
+                             volume - 10);
   }
 }
 
@@ -1426,7 +1427,7 @@ static void set_volume_shortcut_cb_double(metro_t* metro) {
 
   if (volume * 2 <= 100) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->volume_adjustment),
-	                     volume *= 2);
+                             volume *= 2);
   }
   else {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->volume_adjustment),
@@ -1440,7 +1441,7 @@ static void set_volume_shortcut_cb_half(metro_t* metro) {
 
   if (volume / 2 >= 0) {
     gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->volume_adjustment),
-	                     volume /= 2);
+                             volume /= 2);
   }
 }
 
@@ -1469,7 +1470,10 @@ metro_t* metro_new(void) {
   GtkWidget* button;
   GtkWidget* alignment;
 
-  GtkWidget* testbutton;
+  GtkWidget* incrementhbox;
+  GtkWidget* incbutton;
+  GtkWidget* decbutton;
+  GtkWidget* incscale;
 
   closure_data_t* closure_data;
   guint i, j;
@@ -1489,46 +1493,46 @@ metro_t* metro_new(void) {
 
   option_register(&metro->options->option_list,
                   "SampleFilename",
-		  (option_new_t) new_sample,
-		  (option_delete_t) delete_sample,
-		  (option_set_t) set_sample,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_sample,
-		  (void*) metro);
+                  (option_new_t) new_sample,
+                  (option_delete_t) delete_sample,
+                  (option_set_t) set_sample,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_sample,
+                  (void*) metro);
   option_register(&metro->options->option_list,
                   "SoundSystem",
-		  (option_new_t) new_sound_system,
-		  (option_delete_t) delete_sound_system,
-		  (option_set_t) set_sound_system,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_sound_system,
-		  (void*) metro);
+                  (option_new_t) new_sound_system,
+                  (option_delete_t) delete_sound_system,
+                  (option_set_t) set_sound_system,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_sound_system,
+                  (void*) metro);
 
   option_register(&metro->options->option_list,
                   "SoundDevice",
-		  (option_new_t) new_sound_device_name,
-		  (option_delete_t) delete_sound_device_name,
-		  (option_set_t) set_sound_device_name,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_sound_device_name,
-		  (void*) metro);
+                  (option_new_t) new_sound_device_name,
+                  (option_delete_t) delete_sound_device_name,
+                  (option_set_t) set_sound_device_name,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_sound_device_name,
+                  (void*) metro);
 
   option_register(&metro->options->option_list,
                   "CommandOnStart",
-		  (option_new_t) new_command_on_start,
-		  (option_delete_t) delete_command_on_start,
-		  (option_set_t) set_command_on_start,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_command_on_start,
-		  (void*) metro->options);
+                  (option_new_t) new_command_on_start,
+                  (option_delete_t) delete_command_on_start,
+                  (option_set_t) set_command_on_start,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_command_on_start,
+                  (void*) metro->options);
   option_register(&metro->options->option_list,
                   "CommandOnStop",
-		  (option_new_t) new_command_on_stop,
-		  (option_delete_t) delete_command_on_stop,
-		  (option_set_t) set_command_on_stop,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_command_on_stop,
-		  (void*) metro->options);
+                  (option_new_t) new_command_on_stop,
+                  (option_delete_t) delete_command_on_stop,
+                  (option_set_t) set_command_on_stop,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_command_on_stop,
+                  (void*) metro->options);
 
   metro->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
@@ -1563,7 +1567,7 @@ metro_t* metro_new(void) {
     gtk_statusbar_get_context_id(GTK_STATUSBAR(metro->statusbar), "status");
   gtk_statusbar_push(GTK_STATUSBAR(metro->statusbar),
                      metro->status_context,
-		     _(state_data[metro->state].state));
+                     _(state_data[metro->state].state));
   gtk_box_pack_end(GTK_BOX(windowvbox), metro->statusbar, FALSE, TRUE, 0);
   gtk_widget_show(metro->statusbar);
 
@@ -1589,13 +1593,7 @@ metro_t* metro_new(void) {
   gtk_container_add(GTK_CONTAINER(alignment), metrovbox);
   gtk_widget_show(metrovbox);
   
-  /*TODO
-   * make method for adjusting tempo
-   * split table in two
-   * add buttons for increase/decrease tempo
-   * add number selector for step size */
-
-  table = gtk_table_new(3, 3, FALSE);
+  table = gtk_table_new(4, 3, FALSE);
   gtk_box_pack_start(GTK_BOX(metrovbox), table, FALSE, TRUE, 0);
   gtk_table_set_row_spacings(GTK_TABLE(table), 6);
   gtk_table_set_col_spacings(GTK_TABLE(table), 12);
@@ -1616,8 +1614,8 @@ metro_t* metro_new(void) {
   gtk_widget_show(metro->speed_name);
   g_signal_connect_swapped(G_OBJECT(metro->speed_name),
                            "changed",
-			   G_CALLBACK(set_speed_name_cb),
-			   metro);
+                           G_CALLBACK(set_speed_name_cb),
+                           metro);
 
   /* TRANSLATORS: This button needs to be clicked ("tapped") at least twice for
      specifying a tempo */
@@ -1629,17 +1627,17 @@ metro_t* metro_new(void) {
   label = gtk_label_new(_("Speed:"));
   gtk_table_attach(GTK_TABLE(table), label,
                    0, 1, 1, 2,
-		   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+                   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
   gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
   gtk_widget_show (label);
 
   metro->speed_adjustment =
     gtk_adjustment_new(DEFAULT_BPM, DEFAULT_MIN_BPM, DEFAULT_MAX_BPM,
-	               1.0, 1.0, 0.0);
+                       1.0, 1.0, 0.0);
   g_signal_connect_swapped(G_OBJECT(metro->speed_adjustment),
                            "value_changed",
-		           G_CALLBACK(set_speed_cb),
-		           metro);
+                           G_CALLBACK(set_speed_cb),
+                           metro);
   set_speed_cb(metro);
 
   scale = gtk_hscale_new (GTK_ADJUSTMENT (metro->speed_adjustment));
@@ -1648,66 +1646,88 @@ metro_t* metro_new(void) {
   gtk_scale_set_draw_value (GTK_SCALE (scale), FALSE);
   gtk_table_attach(GTK_TABLE(table), scale,
                    1, 2, 1, 2,
-		   GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+                   GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
   gtk_widget_show (scale);
 
   spinbutton = gtk_spin_button_new(GTK_ADJUSTMENT(metro->speed_adjustment),
                                    1.0, /* Step */
-				   0    /* number of decimals */);
+                                   0    /* number of decimals */);
   gtk_table_attach(GTK_TABLE(table), spinbutton,
                    2, 3, 1, 2,
-		   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+                   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
   gtk_widget_show(spinbutton);
+
+  incrementhbox = gtk_hbox_new(1, 5);
+  gtk_table_attach(GTK_TABLE(table), incrementhbox,
+                   0, 3, 2, 3,
+                   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+  gtk_widget_show(incrementhbox);
+
+  decbutton = gtk_button_new_with_label("Slower");
+  gtk_box_pack_start(GTK_BOX(incrementhbox), decbutton, 0, 1, 0);
+  g_signal_connect_swapped(decbutton, "clicked", G_CALLBACK(dec_speed_cb),
+          metro);
+  gtk_widget_show(decbutton);
+
+  metro->speed_spin_button = gtk_spin_button_new_with_range(1, 20, 1);
+  gtk_box_pack_start(GTK_BOX(incrementhbox), metro->speed_spin_button, 0, 1, 0);
+  gtk_widget_show(metro->speed_spin_button);
+
+  incbutton = gtk_button_new_with_label("Faster");
+  gtk_box_pack_start(GTK_BOX(incrementhbox), incbutton, 0, 1, 0);
+  g_signal_connect_swapped(incbutton, "clicked", G_CALLBACK(inc_speed_cb),
+          metro);
+  gtk_widget_show(incbutton);
 
   option_register(&metro->options->option_list,
                   "MinBPM",
-		  (option_new_t) new_min_bpm,
-		  (option_delete_t) delete_min_bpm,
-		  (option_set_t) set_min_bpm,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_min_bpm,
-		  (void*) metro);
+                  (option_new_t) new_min_bpm,
+                  (option_delete_t) delete_min_bpm,
+                  (option_set_t) set_min_bpm,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_min_bpm,
+                  (void*) metro);
 
   option_register(&metro->options->option_list,
                   "MaxBPM",
-		  (option_new_t) new_max_bpm,
-		  (option_delete_t) delete_max_bpm,
-		  (option_set_t) set_max_bpm,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_max_bpm,
-		  (void*) metro);
+                  (option_new_t) new_max_bpm,
+                  (option_delete_t) delete_max_bpm,
+                  (option_set_t) set_max_bpm,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_max_bpm,
+                  (void*) metro);
 
   option_register(&metro->options->option_list,
                   "Speed",
-		  (option_new_t) new_speed,
-		  (option_delete_t) delete_speed,
-		  (option_set_t) set_speed,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_speed,
-		  (void*) metro);
+                  (option_new_t) new_speed,
+                  (option_delete_t) delete_speed,
+                  (option_set_t) set_speed,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_speed,
+                  (void*) metro);
 
   option_register(&metro->options->option_list,
                   "Volume",
-		  (option_new_t) new_volume,
-		  (option_delete_t) delete_volume,
-		  (option_set_t) set_volume,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_volume,
-		  (void*) metro);
+                  (option_new_t) new_volume,
+                  (option_delete_t) delete_volume,
+                  (option_set_t) set_volume,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_volume,
+                  (void*) metro);
 
   label = gtk_label_new (_("Volume:"));
   gtk_table_attach(GTK_TABLE(table), label,
-                   0, 1, 2, 3,
-		   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+                   0, 1, 3, 4,
+                   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
   gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.5);
   gtk_widget_show (label);
 
   metro->volume_adjustment = gtk_adjustment_new(DEFAULT_VOLUME,
       VOLUME_MIN, VOLUME_MAX, 5.0, 25.0, 0.0);
   g_signal_connect_swapped(G_OBJECT(metro->volume_adjustment),
-			   "value_changed",
-			   G_CALLBACK(set_volume_cb),
-			   metro);
+                           "value_changed",
+                           G_CALLBACK(set_volume_cb),
+                           metro);
   set_volume_cb(metro);
 
   scale = gtk_hscale_new (GTK_ADJUSTMENT(metro->volume_adjustment));
@@ -1715,16 +1735,16 @@ metro_t* metro_new(void) {
   gtk_scale_set_digits (GTK_SCALE (scale), 0);
   gtk_scale_set_draw_value (GTK_SCALE (scale), FALSE);
   gtk_table_attach(GTK_TABLE(table), scale,
-                   1, 2, 2, 3,
-		   GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+                   1, 2, 3, 4,
+                   GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
   gtk_widget_show (scale);
 
   spinbutton = gtk_spin_button_new(GTK_ADJUSTMENT(metro->volume_adjustment),
                                    1.0, /* Step */
-				   1    /* number of decimals */);
+                                   1    /* number of decimals */);
   gtk_table_attach(GTK_TABLE(table), spinbutton,
-                   2, 3, 2, 3,
-		   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+                   2, 3, 3, 4,
+                   GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
   gtk_widget_show(spinbutton);
 
   /* Timing UI Code */
@@ -1759,53 +1779,53 @@ metro_t* metro_new(void) {
 
   g_signal_connect(G_OBJECT(metro->meter_button_1),
                    "toggled",
-		   G_CALLBACK(set_meter_cb),
-		   metro);
+                   G_CALLBACK(set_meter_cb),
+                   metro);
 
   metro->meter_button_2 =
     gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(metro->meter_button_1),
-	/* TRANSLATORS: duple meter */
-	_("2/4"));
+        /* TRANSLATORS: duple meter */
+        _("2/4"));
   gtk_box_pack_start(GTK_BOX(hbox), metro->meter_button_2, FALSE, TRUE, 0);
   gtk_widget_show (metro->meter_button_2);
   g_signal_connect(G_OBJECT(metro->meter_button_2),
                    "toggled",
-		   G_CALLBACK(set_meter_cb),
-		   metro);
+                   G_CALLBACK(set_meter_cb),
+                   metro);
 
   metro->meter_button_3 =
     gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(metro->meter_button_2),
-	/* TRANSLATORS: triple meter */
-	_("3/4"));
+        /* TRANSLATORS: triple meter */
+        _("3/4"));
   gtk_box_pack_start(GTK_BOX(hbox), metro->meter_button_3, FALSE, TRUE, 0);
   gtk_widget_show (metro->meter_button_3);
   g_signal_connect(G_OBJECT(metro->meter_button_3),
                    "toggled",
-		   G_CALLBACK(set_meter_cb),
-		   metro);
+                   G_CALLBACK(set_meter_cb),
+                   metro);
 
   metro->meter_button_4 =
     gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(metro->meter_button_3),
-	/* TRANSLATORS: quadruple meter / common meter */
-	_("4/4"));
+        /* TRANSLATORS: quadruple meter / common meter */
+        _("4/4"));
   gtk_box_pack_start(GTK_BOX(hbox), metro->meter_button_4, FALSE, TRUE, 0);
   gtk_widget_show (metro->meter_button_4);
   g_signal_connect(G_OBJECT(metro->meter_button_4),
                    "toggled",
-		   G_CALLBACK(set_meter_cb),
-		   metro);
+                   G_CALLBACK(set_meter_cb),
+                   metro);
 
   metro->meter_button_more =
     gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(metro->meter_button_4),
-	/* TRANSLATORS: meter with more than 4 beats per measure */
-	_("Other:"));
+        /* TRANSLATORS: meter with more than 4 beats per measure */
+        _("Other:"));
   gtk_box_pack_start(GTK_BOX(hbox), metro->meter_button_more,
       FALSE, TRUE, 0);
   gtk_widget_show(metro->meter_button_more);
   g_signal_connect(G_OBJECT(metro->meter_button_more),
                    "toggled",
                    G_CALLBACK(set_meter_cb),
-	           metro);
+                   metro);
 
   adjustment = gtk_adjustment_new(5, 5, MAX_METER, 1, 4, 0);
   metro->meter_spin_button =
@@ -1817,7 +1837,7 @@ metro_t* metro_new(void) {
   g_signal_connect(G_OBJECT(metro->meter_spin_button),
                    "value-changed",
                    G_CALLBACK(set_meter_cb),
-		   metro);
+                   metro);
 
   /* Accent table */
   metro->accentframe = gtk_frame_new(_("Beat Accent"));
@@ -1848,11 +1868,11 @@ metro_t* metro_new(void) {
       button = gtk_check_button_new_with_label(temp);
       free(temp);
       gtk_table_attach(GTK_TABLE(accenttable), button,
-	                        j, j + 1, i, i + 1,
-				GTK_FILL, GTK_FILL, 0, 0);
+                                j, j + 1, i, i + 1,
+                                GTK_FILL, GTK_FILL, 0, 0);
 
       g_signal_connect_swapped(button, "toggled",
-			       G_CALLBACK(accents_changed_cb), metro);
+                               G_CALLBACK(accents_changed_cb), metro);
 
       metro->accentbuttons[i * 10 + j] = button;
     }
@@ -1860,29 +1880,29 @@ metro_t* metro_new(void) {
 
   option_register(&metro->options->option_list,
                   "Meter",
-		  (option_new_t) new_meter,
-		  (option_delete_t) delete_meter,
-		  (option_set_t) set_meter,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_meter,
-		  (void*) metro);
+                  (option_new_t) new_meter,
+                  (option_delete_t) delete_meter,
+                  (option_set_t) set_meter,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_meter,
+                  (void*) metro);
 
   option_register(&metro->options->option_list,
                   "ShowAccentTable",
-		  (option_new_t) new_show_accenttable,
-		  (option_delete_t) delete_show_accenttable,
-		  (option_set_t) set_show_accenttable,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_show_accenttable,
-		  (void*) metro);
+                  (option_new_t) new_show_accenttable,
+                  (option_delete_t) delete_show_accenttable,
+                  (option_set_t) set_show_accenttable,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_show_accenttable,
+                  (void*) metro);
   option_register(&metro->options->option_list,
                   "Accents",
-		  (option_new_t) new_accents,
-		  (option_delete_t) delete_accents,
-		  (option_set_t) set_accents,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_accents,
-		  (void*) metro);
+                  (option_new_t) new_accents,
+                  (option_delete_t) delete_accents,
+                  (option_set_t) set_accents,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_accents,
+                  (void*) metro);
 
   /* Profiles */
   metro->profileframe = profiles_new(metro);
@@ -1909,14 +1929,9 @@ metro_t* metro_new(void) {
     gtk_label_new(_(state_data[metro->state].toggle_label));
   gtk_misc_set_padding(GTK_MISC(metro->togglebutton_label), 64, 0);
   gtk_container_add(GTK_CONTAINER(togglebutton),
-		    metro->togglebutton_label);
+                    metro->togglebutton_label);
   gtk_widget_show(metro->togglebutton_label);
 
-  testbutton = gtk_button_new_with_label("test");
-  g_signal_connect_swapped(testbutton, "clicked", G_CALLBACK(change_speed),
-          metro);
-  gtk_box_pack_start(windowvbox, testbutton, 0, 0, 0);
-  gtk_widget_show(testbutton);
   
 
   /* set up additional short cuts */
@@ -1926,8 +1941,8 @@ metro_t* metro_new(void) {
     closure_data->value = i - '1' + 1;
     gtk_accel_group_connect(metro->accel_group, i, GDK_CONTROL_MASK, 0,
       g_cclosure_new_swap(G_CALLBACK(set_meter_shortcut_cb),
-	                  closure_data,
-			  (GClosureNotify) set_meter_shortcut_destroy_notify));
+                          closure_data,
+                          (GClosureNotify) set_meter_shortcut_destroy_notify));
   }
   gtk_accel_group_connect(metro->accel_group, '+', GDK_CONTROL_MASK, 0,
       g_cclosure_new_swap(G_CALLBACK(set_speed_shortcut_cb_plus), metro, NULL));
@@ -1971,12 +1986,12 @@ metro_t* metro_new(void) {
 
   option_register(&metro->options->option_list,
                   "VisualTick",
-		  (option_new_t) new_visualtick,
-		  (option_delete_t) delete_visualtick,
-		  (option_set_t) set_visualtick,
-		  (option_get_n_t) option_return_one,
-		  (option_get_t) get_visualtick,
-		  (void*) metro);
+                  (option_new_t) new_visualtick,
+                  (option_delete_t) delete_visualtick,
+                  (option_set_t) set_visualtick,
+                  (option_get_n_t) option_return_one,
+                  (option_get_t) get_visualtick,
+                  (void*) metro);
 
   /* read rc file */
   option_restore_all(metro->options->option_list);
@@ -1996,8 +2011,8 @@ metro_t* metro_new(void) {
             GTK_MESSAGE_ERROR,
             GTK_BUTTONS_CLOSE,
             _("Couldn't start metronome.\n"
-	      "Please check if specified sound device\n"
-	      "and sample file are accessible."));
+              "Please check if specified sound device\n"
+              "and sample file are accessible."));
   /* Hide the dialog when the user responds to it */
   g_signal_connect_swapped(G_OBJECT(metro->start_error),
                            "response",
@@ -2020,10 +2035,23 @@ void metro_delete(metro_t* metro) {
   g_free(metro);
 }
 
-void change_speed(metro_t* metro) {
-  gdouble speed;
+void change_speed(metro_t* metro, gint inc) {
+  gdouble increase_by;
 
-  speed = gtk_adjustment_get_value(GTK_ADJUSTMENT(metro->speed_adjustment));
-  g_print("speed:%f inceasing by %d\n", speed, 5);
-  gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment), speed + 5);
+  increase_by = gtk_adjustment_get_value(GTK_ADJUSTMENT(
+        gtk_spin_button_get_adjustment(metro->speed_spin_button)));
+  
+  if(!inc)
+      increase_by *= -1;
+
+  gtk_adjustment_set_value(GTK_ADJUSTMENT(metro->speed_adjustment),
+        gtk_adjustment_get_value(metro->speed_adjustment) + increase_by);
+}
+
+void inc_speed_cb(metro_t* metro) {
+    change_speed(metro, TRUE);
+}
+
+void dec_speed_cb(metro_t* metro) {
+    change_speed(metro, FALSE);
 }
